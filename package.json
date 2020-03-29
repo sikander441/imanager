@@ -11,8 +11,10 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.17.1",
+    "fast-xml-parser": "^3.16.0",
     "mongoose": "^5.9.6",
     "node-ssh": "^8.0.0",
-    "winston": "^3.2.1"
+    "winston": "^3.2.1",
+    "xml2js": "^0.4.23"
   }
 }
