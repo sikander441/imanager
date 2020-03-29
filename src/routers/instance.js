@@ -21,10 +21,10 @@ router.get('/' , async (req,res) => {
 })
 
 
-router.get('/getLogs/:id/:logType/:len', async (req,res) => {
+router.get('/getLogs/:id/:logType/:len?', async (req,res) => {
   const _id=req.params.id
   const logType=req.params.logType
-  var len=req.params.len;
+  var len=req.params.len || 50;
   len=len>300?300:len
   const instance = await instanceModel.findById({_id})
   logger.log('info','fetching Logs from instance:'+instance.host+'  Directory: '+instance.logDirectory)
@@ -44,8 +44,10 @@ try{
 
 ssh.connect(config).then(function(){
   ssh.execCommand(CMD).then(function(result){
-    if(result.stdout)
-     res.send(result.stdout)
+    if(result.stdout){
+    res.write(result.stdout)
+    res.end()
+   }
     else
      {logger.log('error',result.stderr);res.send('Something went wrong')}
   })
