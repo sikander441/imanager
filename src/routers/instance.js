@@ -5,8 +5,15 @@ const router=app.Router();
 
 
 router.get('/' , async (req,res) => {
-  const ress = await instanceModel.find({})
-  res.status(200).send(ress)
+  try{
+    var instances = await instanceModel.find({})
+  }
+  catch(e)
+  {
+    return res.status(400).send(e)
+  }
+
+  res.status(200).send(instances)
 })
 
 
