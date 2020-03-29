@@ -22,6 +22,7 @@ app.use('/',mainRouter);
 
 
 // ----------------Connect to MongoDB then start the server-------
+logger.log('info','----------------------START OF APP----------------')
 db.openConnection();
 mongoose.connection.on('connected', () => {
   logger.log('info','Connected to Mongo DB, Starting server now.')
@@ -31,5 +32,8 @@ mongoose.connection.on('connected', () => {
     else {
       logger.log('info','Server Started at port '+port)
     }
+  }).on('error',(e)=>{
+    logger.log('error','Error occurred while trying to create server '+ e);
+    mongoose.connection.close()
   })
 });

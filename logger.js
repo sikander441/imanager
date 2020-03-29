@@ -11,7 +11,8 @@ winston.configure({
       format.printf(info => `${info.timestamp} [${info.level.toUpperCase()}]: ${info.message}`),
     ),
     transports: [
-      new winston.transports.File({ filename: './logs/imanager.log' })
+      new winston.transports.File({ filename: './logs/imanager.log' }),
+       new winston.transports.File({ filename: './logs/error.log', level: 'error' }),
     ]
 })
 
