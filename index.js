@@ -1,7 +1,8 @@
 
 //----DEFAULT IMPORTS------------
 const app = require('./express')
-
+const logger=require('./logger')
+const mongoose = require('mongoose')
 
 //--------Server config-----------
 const port=process.env.PORT || 3000
@@ -19,10 +20,16 @@ const mainRouter=require('./src/routers/main')
 app.use('/instances',instanceRouter);
 app.use('/',mainRouter);
 
-app.listen(port,(err) => {
-  if(err)
-   console.log(err)
-  else {
-    console.log('Running on port '+port)
-  }
-})
+
+// ----------------Connect to MongoDB then start the server-------
+db.openConnection();
+mongoose.connection.on('connected', () => {
+  logger.log('info','Connected to Mongo DB, Starting server now.')
+  app.listen(port,(err) => {
+    if(err)
+     logger.log('error',err)
+    else {
+      logger.log('info','Server Started at port '+port)
+    }
+  })
+});
