@@ -12,6 +12,7 @@
   "dependencies": {
     "express": "^4.17.1",
     "mongoose": "^5.9.6",
+    "node-ssh": "^8.0.0",
     "winston": "^3.2.1"
   }
 }
