@@ -68,6 +68,7 @@ router.get('/isUp/:id',async (req,res) => {
    res.send('Error no instance found')
    return -1;
  }
+
   ihf.updateStatus(instance,res);
 
 })

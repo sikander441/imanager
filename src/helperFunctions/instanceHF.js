@@ -43,6 +43,7 @@ logger.log('info','Running command: '+CMD)
 
     ssh.connect(config).then(async function(){
     await ssh.execCommand(CMD).then(async function(result){
+
       if(result.stderr)
       {
         logger.log('error',new Error(result.stderr))
@@ -79,6 +80,7 @@ const updateStatus = function(instance,res){
  };
 
  var CMD=instance.ihome + '/server/bin/infacmd.sh ping -dn '+instance.domainName+'|grep \"was successfully pinged\"';
+ logger.log('info','Ran Command: '+CMD)
  try{
  ssh.connect(config).then(function(){
    ssh.execCommand(CMD).then(function(result){
@@ -92,13 +94,13 @@ const updateStatus = function(instance,res){
       instance.status="UP"
     }
      else{
-       res.send(200).send('DOWN');
-       logger.log('info','status is set to down for instance: '+instance)
+       logger.log('info','status is set to down for instance: '+`${instance.ihome} ,${instance.host} ,${instance.port}` )
+       res.status(200).send('DOWN');
        instance.status="DOWN"
     }
     instance.save();
-  }).catch((err)=>{res.status(400).send('Something went wrong, plesae check logs');logger.log('error',err)})
-}).catch((err)=>{res.status(400).send('Something went wrong, plesae check logs');logger.log('error',err)})
+  })
+}).catch((err)=>{logger.log('error',err);res.status(400).send('Something went wrong, plesae check logs');})
 
  }catch(e)
  {
