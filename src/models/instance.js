@@ -5,6 +5,9 @@ node_ssh = require('node-ssh')
 var parseString = require('xml2js').parseString;
 
 var instanceSchema=new Schema({
+    CatalogServices:{
+      type:[String]
+    },
     ihome: {
         type:String,
         required:true,
