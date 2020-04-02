@@ -113,7 +113,7 @@ router.post('/',  async (req,res) => {
   }
  catch(e)
  {
-   logger.log('error','Failed to save instance :'+e)
+   logger.log('error',e)
    return res.status(400).send(e.message)
  }
 
