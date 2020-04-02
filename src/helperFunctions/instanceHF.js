@@ -4,7 +4,20 @@ instanceModel = require('../models/instance')
 var xml2js = require('xml2js');
 
 
+extractCatalogServices = async (instance,result)=>
+{
+ if(result.includes("Command ran successfully."))
+ {
+   result=result.replace('Command ran successfully.','').trim()
+   result=result.split(" ")
+   instance.CatalogServices = result
+ }
+ else {
+   logger.log('warn','Error to fetch the list of catalog services'+result.substr(0,300))
+ }
 
+return instance
+}
 extractNodeInfo = async function(instance,xmlData){
 
     var parser = new xml2js.Parser
@@ -21,8 +34,15 @@ extractNodeInfo = async function(instance,xmlData){
 
 extractSystemLogDirectory = async function(instance,directory)
 {
+  if(directory.includes("Command ran successfully."))
+{
   directory=directory.replace('Command ran successfully.','').trim()
   instance.logDirectory=directory
+}
+else{
+  logger.log('warn','Error to fetch the log directory'+directory.substr(0,300))
+
+}
   return instance
 }
 
@@ -36,8 +56,13 @@ updateDomainInfo = function(instance,res){
    port: instance.sshPort
 };
 
+versionSubCommand = '\`'+instance.ihome+'/server/bin/infacmd.sh version | grep -i version\`'
+domainsInfaSubCommand = '\`cat '+instance.ihome+'/domains.infa\`'
+logDirectorySubCommand =  '\`'+instance.ihome+'/server/bin/infacmd.sh getSystemLogDirectory \`'
+catalogServiceSubCommand = '\`'+instance.ihome+'/server/bin/infacmd.sh listServices -dn '+instance.domainName+' -un '+instance.instanceUser+' -pd '+instance.instancePassword+' -st LDM \`'
+delimiter='\"XXFFHH\" '
 
-var CMD='echo \`'+instance.ihome+'/server/bin/infacmd.sh version | grep -i version\` \"XXFFHH\" \`cat '+instance.ihome+'/domains.infa\` \"XXFFHH\" \`'+instance.ihome+'/server/bin/infacmd.sh getSystemLogDirectory \`'
+var CMD='echo  '+versionSubCommand+delimiter+domainsInfaSubCommand+delimiter+logDirectorySubCommand+delimiter+catalogServiceSubCommand
 logger.log('info','Running command: '+CMD)
   try{
 
@@ -54,8 +79,9 @@ logger.log('info','Running command: '+CMD)
         result=result.stdout.split('XXFFHH')
         var version=result[0].split(':')[1]
         instance.version=version;
-        instance = await extractNodeInfo(instance,result[1]);
-        instance = await extractSystemLogDirectory(instance,result[2])
+        instance = await extractNodeInfo(instance,result[1],res);
+        instance = await extractSystemLogDirectory(instance,result[2],res)
+        instance = await extractCatalogServices(instance,result[3],res)
         res.status(200).send(instance)
         logger.log('info','Domain info updated')
         instance.save();
