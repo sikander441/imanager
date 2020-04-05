@@ -54,7 +54,20 @@ router.get('/refreshDomain/:id',async (req,res)=> {
 
 })
 
+router.delete('/',async (req,res) => {
+  const _id=req.query.id
+  try{
+    var instance = await instanceModel.findOneAndDelete({_id})
+    logger.log('info',`Deleted instance: ${instance.host} with ihome: ${instance.ihome}`)
+    res.status(200).send('Deleted Succesfully: '+instance)
+  }
+  catch(e)
+  {
+    logger.log('info',e)
+    return res.status(400).send('Failed to get instances: '+e)
+  }
 
+})
 router.get('/' , async (req,res) => {
   try{
     var instances = await instanceModel.find(req.query)
