@@ -22,7 +22,8 @@ router.get('/checkCatalogStatus',async (req,res) =>{
   try{
     instance = await ihf.checkServiceStatus(instance,serviceName)
     var index = instance.CatalogServices.findIndex(x => x.name == serviceName)
-    res.status(200).send('Service is set to '+instance.CatalogServices[index].status)
+    res.status(200).send(`Service ${serviceName} is set to ${instance.CatalogServices[index].status}`)
+    await instance.save()
   }catch(e){
     logger.log('error',e)
     res.status(400).send('Something went wrong: '+e)
@@ -30,4 +31,30 @@ router.get('/checkCatalogStatus',async (req,res) =>{
 })
 
 
+router.get('/updateAllServices',async (req,res)=> {
+  const _id=req.query.id
+  try{
+  var instance = await instanceModel.findById({_id})
+  if(!instance)throw new Error('No instance with the ID found')
+  }catch(e){
+  logger.log('error',e)
+  return res.status(404).send('No such instance found,please check object id'+e)
+  }
+
+  try{
+    for(var i=0 ; i<instance.CatalogServices.length ;i++ )
+      {
+        instance = await ihf.checkServiceStatus(instance,instance.CatalogServices[i].name)
+        var index = instance.CatalogServices.findIndex(x => x.name == instance.CatalogServices[i].name)
+        logger.log('info',`Status for service ${instance.CatalogServices[i].name} is set to ${instance.CatalogServices[i].status}`)
+      }
+    }catch(e){
+      logger.log('error',e)
+      res.status(400).send('Something went wrong: '+e.message)
+    }
+    finally{
+      res.send(instance)
+      await instance.save()
+    }
+})
 module.exports = router
