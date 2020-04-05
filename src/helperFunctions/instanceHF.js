@@ -22,13 +22,45 @@ try{
 
 }
 
+checkServiceStatus =  async (instance, serviceName)=> {
+  var index = instance.CatalogServices.findIndex(x => x.name == serviceName)
+  if(index == -1)
+   throw new Error('Service Not found in this domain')
+  else{
+    var CMD=instance.ihome + '/server/bin/infacmd.sh ping -dn '+instance.domainName+'|grep \"was successfully pinged\"';
+
+    try{
+        var result = await runSSH(instance,CMD)
+        if(result.stderr){
+         throw new Error(result.stderr)
+        }
+        else if(result.stdout){
+         logger.log('info',`Service: ${serviceName} set to UP`)
+         instance.CatalogServices[index].status='UP'
+         return instance
+       }
+        else{
+          logger.log('info',`status is set to down for service: ${serviceName} of instance ${instance.host}:${instance.port}` )
+          instance.CatalogServices[index].status='DOWN'
+          return instance
+       }
+    }catch(e){ throw e}
+
+  }
+}
+
 extractCatalogServices = async (instance,result)=>
 {
  if(result.includes("Command ran successfully."))
  {
    result=result.replace('Command ran successfully.','').trim()
    result=result.split(" ")
-   instance.CatalogServices = result
+   result.forEach((item, i) => {
+     item=item.trim()
+     if( instance.CatalogServices.findIndex(x => x.name == item) == -1)
+         instance.CatalogServices.push({name:item,status:"DOWN"})
+   });
+
  }
  else {
    logger.log('warn','Error to fetch the list of catalog services'+result.substr(0,300))
@@ -166,5 +198,6 @@ module.exports = {
   updateStatus,
   updateDomainInfo,
   bringUp,
-  runSSH
+  runSSH,
+  checkServiceStatus
 };

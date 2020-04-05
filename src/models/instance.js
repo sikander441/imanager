@@ -6,7 +6,11 @@ var parseString = require('xml2js').parseString;
 
 var instanceSchema=new Schema({
     CatalogServices:{
-      type:[String]
+      type:[{
+        name:String,
+        status:String
+      }
+      ],
     },
     ihome: {
         type:String,

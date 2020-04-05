@@ -5,8 +5,10 @@ const ihf = require('../helperFunctions/instanceHF')
 node_ssh = require('node-ssh')
 ssh = new node_ssh()
 
-const router=app.Router();
+const serviceRouter = require('./services') 
 
+const router=app.Router();
+router.use('/services',serviceRouter)
 
 router.get('/shutdown',async (req,res) =>{
   const _id=req.query.id
