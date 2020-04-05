@@ -7,19 +7,43 @@ ssh = new node_ssh()
 
 const router=app.Router();
 
+
+router.get('/shutdown',async (req,res) =>{
+  const _id=req.query.id
+  try{
+  var instance = await instanceModel.findById({_id})
+  if(!instance)throw new Error('No instance with the ID found')
+  }catch(e){
+  logger.log('error',e)
+  return res.status(404).send('No such instance found,please check object id'+e)
+  }
+  var CMD=instance.ihome + '/tomcat/bin/infaservice.sh shutdown';
+  try{
+    var result = await ihf.runSSH(instance,CMD)
+    if(result.stderr)
+    {
+      throw new Error(result.stderr)
+    }
+    else{
+      res.status(200).send(result.stdout+" You can check the logs now")
+    }
+  }catch(e){
+    logger.log('error',e)
+    res.status(400).send('Something went wrong: '+e.message)
+  }
+})
+
 router.get('/startup/:id',async (req,res) =>{
 
   const _id=req.params.id
   try{
   var instance = await instanceModel.findById({_id})
+    if(!instance)throw new Error('No instance with the ID found')
   }catch(e){
   logger.log('error',e)
-  return res.status(404).send('No such instance found,please check object id')
+  return res.status(404).send('No such instance found,please check object id'+e)
   }
-  if(!instance){
-   logger.log('warn','Something went wrong while fetching the instance')
-   return res.status(404).send('Error no instance found')
- }
+
  try{
    await ihf.bringUp(instance);
    res.send('The node is starting up, you can check the logs')

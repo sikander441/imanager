@@ -165,5 +165,6 @@ module.exports = {
   getLogs,
   updateStatus,
   updateDomainInfo,
-  bringUp
+  bringUp,
+  runSSH
 };
