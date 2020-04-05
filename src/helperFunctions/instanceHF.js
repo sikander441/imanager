@@ -2,7 +2,25 @@ node_ssh = require('node-ssh')
 logger=require('../../logger')
 instanceModel = require('../models/instance')
 var xml2js = require('xml2js');
+// --------Runs an SSH command, returns a Promise.
+const runSSH = async (instance,CMD)=>{
+logger.log('info','Running command: '+CMD)
+  var config={
+    host: instance.host,
+    username: instance.linuxUser,
+    password: instance.linuxPassword,
+    port: instance.sshPort
+};
+try{
+  await ssh.connect(config)
+  var result = await ssh.execCommand(CMD)
+  ssh.dispose()
+  return result
+}catch(err){
+  throw err
+}
 
+}
 
 extractCatalogServices = async (instance,result)=>
 {
@@ -16,7 +34,6 @@ extractCatalogServices = async (instance,result)=>
    logger.log('warn','Error to fetch the list of catalog services'+result.substr(0,300))
  }
 
-return instance
 }
 extractNodeInfo = async function(instance,xmlData){
 
@@ -29,7 +46,6 @@ extractNodeInfo = async function(instance,xmlData){
     }
     instance.domainName=result.Portals.vector[0].domainName[0]
 
-    return instance;
 }
 
 extractSystemLogDirectory = async function(instance,directory)
@@ -41,20 +57,12 @@ extractSystemLogDirectory = async function(instance,directory)
 }
 else{
   logger.log('warn','Error to fetch the log directory'+directory.substr(0,300))
-
-}
-  return instance
 }
 
-updateDomainInfo = function(instance,res){
+}
 
 
- var config={
-   host: instance.host,
-   username: instance.linuxUser,
-   password: instance.linuxPassword,
-   port: instance.sshPort
-};
+updateDomainInfo = async function(instance){
 
 versionSubCommand = '\`'+instance.ihome+'/server/bin/infacmd.sh version | grep -i version\`'
 domainsInfaSubCommand = '\`cat '+instance.ihome+'/domains.infa\`'
@@ -63,144 +71,92 @@ catalogServiceSubCommand = '\`'+instance.ihome+'/server/bin/infacmd.sh listServi
 delimiter='\"XXFFHH\" '
 
 var CMD='echo  '+versionSubCommand+delimiter+domainsInfaSubCommand+delimiter+logDirectorySubCommand+delimiter+catalogServiceSubCommand
-logger.log('info','Running command: '+CMD)
+
   try{
-
-    ssh.connect(config).then(async function(){
-    await ssh.execCommand(CMD).then(async function(result){
-
+      var result = await runSSH(instance,CMD)
       if(result.stderr)
       {
-        logger.log('error',new Error(result.stderr))
-        res.status(400).send('Something went wrong'+result.stderr)
+        throw new Error(result.stderr)
       }
-      else if(result.stdout){
+      else if(result.stdout)
+      {
         logger.log('info','Command ran successfully')
         result=result.stdout.split('XXFFHH')
-        var version=result[0].split(':')[1]
-        instance.version=version;
-        instance = await extractNodeInfo(instance,result[1],res);
-        instance = await extractSystemLogDirectory(instance,result[2],res)
-        instance = await extractCatalogServices(instance,result[3],res)
-        res.status(200).send(instance)
+        instance.version=result[0].split(':')[1].trim()
+        await Promise.all([
+                          extractNodeInfo(instance,result[1]),
+                          extractSystemLogDirectory(instance,result[2]),
+                          extractCatalogServices(instance,result[3])
+                        ])
+        return instance;
         logger.log('info','Domain info updated')
-        instance.save();
       }
-    })
-  }).catch((err)=>{logger.log('error',err);res.status(400).send('Something went wrong,check logs')})
+}catch(e){throw e}
 
-}catch(e)
-    {
-      logger.log('error',e)
-      res.status(400).send('Something went wrong,check logs');
-    }
 }
 
 
-const updateStatus = function(instance,res){
-  var config={
-    host: instance.host,
-    username: instance.linuxUser,
-    password: instance.linuxPassword,
-    port: instance.sshPort
- };
+const updateStatus = async function(instance,res){
 
  var CMD=instance.ihome + '/server/bin/infacmd.sh ping -dn '+instance.domainName+'|grep \"was successfully pinged\"';
- logger.log('info','Ran Command: '+CMD)
+
  try{
- ssh.connect(config).then(function(){
-   ssh.execCommand(CMD).then(function(result){
+     var result = await runSSH(instance,CMD)
      if(result.stderr){
-       res.status(400).send('Something went wrong, please check the logs');
-       logger.log('error',new Error(result.stderr))
+      throw new Error(result.stderr)
      }
      else if(result.stdout){
       logger.log('info','status is set to UP')
-      res.status(200).send('UP')
-      instance.status="UP"
+      instance.status='UP'
+      return instance
     }
      else{
        logger.log('info','status is set to down for instance: '+`${instance.ihome} ,${instance.host} ,${instance.port}` )
-       res.status(200).send('DOWN');
        instance.status="DOWN"
+       return instance
     }
-    instance.save();
-  })
-}).catch((err)=>{logger.log('error',err);res.status(400).send('Something went wrong, plesae check logs');})
-
- }catch(e)
- {
-   res.status(400).send('Something went wrong, plesae check logs')
-   logger.log('error',e)
- }
+ }catch(e){ throw e}
 
 }
 
 
-const getLogs = (instance,CMD,res) =>{
-  var config={
-    host: instance.host,
-    username: instance.linuxUser,
-    password: instance.linuxPassword,
-    port: instance.sshPort
-};
+const getLogs = async (instance,CMD) =>{
 
-try{
-ssh.connect(config).then(function(){
-  ssh.execCommand(CMD).then(function(result){
-    if(result.stdout){
-    logger.log('info','Logs fetched successfully')
-    res.write(result.stdout)
-    res.end()
-    ssh.dispose();
-   }
-    else
-     {
-       logger.log('error',new Error(result.stderr));res.send('Something went wrong')}
-  })
-}).catch((err)=>{logger.log('error',err);res.status(400).send('Error')})
+  try{
+      var result = await runSSH(instance,CMD)
+      if(result.stdout){
+        logger.log('info','Logs fetched successfully')
+        return result.stdout
+      }
+      else
+       {
+         logger.log('error',new Error(result.stderr));
+         throw new Error(result.stderr)
+       }
+  }catch(e)
+  {
+    throw e
+  }
 
-}catch(e)
-{
-  logger.log('error','Something went wrong while fetching logs from server')
-  res.status(400).send('Something went wrong, please refresh.')
-}
-}
+  }
 
 
 
-bringUp = function(instance,res){
-  var config={
-    host: instance.host,
-    username: instance.linuxUser,
-    password: instance.linuxPassword,
-    port: instance.sshPort
- };
-
-
+bringUp =async function(instance,res){
  var CMD=instance.ihome + '/tomcat/bin/infaservice.sh startup';
- logger.log('info','Running command'+CMD)
+
  try{
 
- ssh.connect(config).then(function(){
-   ssh.execCommand(CMD).then(async function(result){
+     var result = runSSH(instance,CMD)
      if(result.stderr)
      {
-       logger.log('error',new Error(result.stderr))
-       res.status(400).send('Something went wrong, please check logs')
+       throw new Error(result.stderr)
      }
      else{
        logger.log('info','Command ran succesfully')
-     res.status(200).send(result.stdout)
    }
-   })
- }).catch((err)=>{logger.log('error',err);res.status(400).send('Something went wrong')})
 
- }catch(e)
- {
-   logger.log('error',e)
-   res.status(400).send('Something went wrong')
- }
+ }catch(e){ throw e }
 
 }
 
