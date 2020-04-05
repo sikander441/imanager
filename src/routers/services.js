@@ -20,7 +20,7 @@ router.get('/checkCatalogStatus',async (req,res) =>{
   }
 
   try{
-    instance = await ihf.checkServiceStatus(instance,serviceName)
+    await ihf.checkServiceStatus(instance,serviceName)
     var index = instance.CatalogServices.findIndex(x => x.name == serviceName)
     res.status(200).send(`Service ${serviceName} is set to ${instance.CatalogServices[index].status}`)
     await instance.save()
@@ -44,16 +44,16 @@ router.get('/updateAllServices',async (req,res)=> {
   try{
     for(var i=0 ; i<instance.CatalogServices.length ;i++ )
       {
-        instance = await ihf.checkServiceStatus(instance,instance.CatalogServices[i].name)
-        var index = instance.CatalogServices.findIndex(x => x.name == instance.CatalogServices[i].name)
-        logger.log('info',`Status for service ${instance.CatalogServices[i].name} is set to ${instance.CatalogServices[i].status}`)
+        await ihf.checkServiceStatus(instance,instance.CatalogServices[i].name,true)
       }
+      res.send(instance)
+
     }catch(e){
       logger.log('error',e)
       res.status(400).send('Something went wrong: '+e.message)
     }
     finally{
-      res.send(instance)
+
       await instance.save()
     }
 })

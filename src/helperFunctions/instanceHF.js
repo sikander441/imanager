@@ -3,6 +3,7 @@ logger=require('../../logger')
 instanceModel = require('../models/instance')
 var xml2js = require('xml2js');
 // --------Runs an SSH command, returns a Promise.
+
 const runSSH = async (instance,CMD)=>{
 logger.log('info','Running command: '+CMD)
   var config={
@@ -21,28 +22,44 @@ try{
 }
 
 }
-
-checkServiceStatus =  async (instance, serviceName)=> {
+getProcessOptions = async (instance,index,result) =>{
+  if(result.stderr){
+    logger.log('warn','Error while fetching the Process options of Catalog Service '+result.stderr)
+    throw new Error(result.stderr)
+  }
+ else{
+   var https = result.stdout.split('\n')
+   https = https[https.length-3].split('=')[1]
+   var http = result.stdout.split('\n')
+   http = http[http.length-4].split('=')[1]
+   instance.CatalogServices[index].url = `${instance.host}:${https==0?http:https}/ldmadmin`
+ }
+}
+checkServiceStatus =  async (instance, serviceName,force)=> {
   var index = instance.CatalogServices.findIndex(x => x.name == serviceName)
   if(index == -1)
    throw new Error('Service Not found in this domain')
   else{
     var CMD=instance.ihome + '/server/bin/infacmd.sh ping -dn '+instance.domainName+' -sn '+serviceName+'|grep \"was successfully pinged\"';
-
+    var CMD2=instance.ihome + '/server/bin/infacmd.sh ldm listServiceProcessOptions -dn '+instance.domainName+' -sn '+serviceName+' -un \"'+instance.instanceUser+'\" -pd \"'+instance.instancePassword+'\" -nn '+instance.nodes[0]
     try{
         var result = await runSSH(instance,CMD)
+        if(force || !instance.CatalogServices[index].url)
+        {
+            var result2 = await runSSH(instance,CMD2)
+            await getProcessOptions(instance,index,result2)
+        }
         if(result.stderr){
          throw new Error(result.stderr)
         }
         else if(result.stdout){
-         logger.log('info',`Service: ${serviceName} set to UP`)
+         logger.log('info',`Status for service: ${serviceName} set to UP`)
          instance.CatalogServices[index].status='UP'
          return instance
        }
         else{
-          logger.log('info',`status is set to down for service: ${serviceName} of instance ${instance.host}:${instance.port}` )
+          logger.log('info',`status is set to down for service: ${serviceName} of instance ${instance.CatalogServices[index].url}` )
           instance.CatalogServices[index].status='DOWN'
-          return instance
        }
     }catch(e){ throw e}
 
@@ -68,7 +85,7 @@ extractCatalogServices = async (instance,result)=>
  }
 
 }
-extractNodeInfo = async function(instance,xmlData){
+extractDomainInfo = async function(instance,xmlData){
 
     var parser = new xml2js.Parser
     result= await parser.parseStringPromise(xmlData)
@@ -93,7 +110,16 @@ else{
 }
 
 }
-
+extractNodeNames = async(instance , result ) => {
+  if(result.includes("Command ran successfully."))
+{
+  result=result.replace('Command ran successfully.','').trim()
+  instance.nodes=result.split(' ')
+}
+else{
+  logger.log('warn','Error to fetch the Node Names'+result.substr(0,300))
+}
+}
 
 updateDomainInfo = async function(instance){
 
@@ -101,9 +127,10 @@ versionSubCommand = '\`'+instance.ihome+'/server/bin/infacmd.sh version | grep -
 domainsInfaSubCommand = '\`cat '+instance.ihome+'/domains.infa\`'
 logDirectorySubCommand =  '\`'+instance.ihome+'/server/bin/infacmd.sh getSystemLogDirectory \`'
 catalogServiceSubCommand = '\`'+instance.ihome+'/server/bin/infacmd.sh listServices -dn '+instance.domainName+' -un '+instance.instanceUser+' -pd '+instance.instancePassword+' -st LDM \`'
+getNodeListSubCommand = '\`'+instance.ihome+'/server/bin/infacmd.sh listNodes -dn '+instance.domainName+' -un '+instance.instanceUser+' -pd '+instance.instancePassword+'\`';
 delimiter='\"XXFFHH\" '
 
-var CMD='echo  '+versionSubCommand+delimiter+domainsInfaSubCommand+delimiter+logDirectorySubCommand+delimiter+catalogServiceSubCommand
+var CMD='echo  '+versionSubCommand+delimiter+domainsInfaSubCommand+delimiter+logDirectorySubCommand+delimiter+catalogServiceSubCommand+delimiter+getNodeListSubCommand
 
   try{
       var result = await runSSH(instance,CMD)
@@ -117,9 +144,10 @@ var CMD='echo  '+versionSubCommand+delimiter+domainsInfaSubCommand+delimiter+log
         result=result.stdout.split('XXFFHH')
         instance.version=result[0].split(':')[1].trim()
         await Promise.all([
-                          extractNodeInfo(instance,result[1]),
+                          extractDomainInfo(instance,result[1]),
                           extractSystemLogDirectory(instance,result[2]),
-                          extractCatalogServices(instance,result[3])
+                          extractCatalogServices(instance,result[3]),
+                          extractNodeNames(instance,result[4])
                         ])
         return instance;
         logger.log('info','Domain info updated')
@@ -200,5 +228,5 @@ module.exports = {
   updateDomainInfo,
   bringUp,
   runSSH,
-  checkServiceStatus
+  checkServiceStatus,
 };

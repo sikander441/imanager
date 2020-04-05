@@ -8,10 +8,12 @@ var instanceSchema=new Schema({
     CatalogServices:{
       type:[{
         name:String,
-        status:String
+        status:String,
+        url:String,
       }
       ],
     },
+    nodes:[String],
     ihome: {
         type:String,
         required:true,
