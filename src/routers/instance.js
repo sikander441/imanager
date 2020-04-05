@@ -13,14 +13,21 @@ router.get('/startup/:id',async (req,res) =>{
   try{
   var instance = await instanceModel.findById({_id})
   }catch(e){
-  logger.log('error','No such instance found',e)
+  logger.log('error',e)
   return res.status(404).send('No such instance found,please check object id')
   }
   if(!instance){
    logger.log('warn','Something went wrong while fetching the instance')
    return res.status(404).send('Error no instance found')
  }
-  ihf.bringUp(instance,res);
+ try{
+   await ihf.bringUp(instance);
+   res.send('The node is starting up, you can check the logs')
+ }catch(e){
+   logger.log('error',e)
+   res.status(400).send('Something went wrong: '+e.message)
+ }
+
 })
 
 
@@ -35,7 +42,14 @@ router.get('/refreshDomain/:id',async (req,res)=> {
   if(!instance){
    return res.status(400).send('Error no instance found')
  }
-ihf.updateDomainInfo(instance,res);
+ try{
+   var instance = await ihf.updateDomainInfo(instance);
+   res.status(200).send(instance)
+   await instance.save()
+ }catch(e){
+   logger.log('error',e)
+   res.status(400).send('Something went Wrong: '+e.message)
+ }
 
 
 })
@@ -43,7 +57,7 @@ ihf.updateDomainInfo(instance,res);
 
 router.get('/' , async (req,res) => {
   try{
-    var instances = await instanceModel.find({})
+    var instances = await instanceModel.find(req.query)
   }
   catch(e)
   {
@@ -61,7 +75,7 @@ router.get('/isUp/:id',async (req,res) => {
   try{
   var instance = await instanceModel.findById({_id})
   }catch(e){
-  logger.log('error','No such instance found',e)
+  logger.log('error',e)
   return res.send('No such instance found,please check object id')
   }
   if(!instance){
@@ -69,7 +83,15 @@ router.get('/isUp/:id',async (req,res) => {
    return -1;
  }
 
-  ihf.updateStatus(instance,res);
+  try{
+    var instance = await ihf.updateStatus(instance);
+    res.status(200).send(instance.status)
+    await instance.save()
+  }catch(e)
+  {
+    logger.log('error',e)
+    res.status(400).send('Something went wrong while checking node status: '+e.message)
+  }
 
 })
 
@@ -83,10 +105,9 @@ router.get('/getLogs/:id/:logType/:len?', async (req,res) => {
   try{
   var instance = await instanceModel.findById({_id})
 }catch(e){
-  logger.log('error','No such instance found',e)
+  logger.log('error',e)
   return res.send('No such instance found,please check object id')
 }
-
  if(!instance){
   res.send('Error no instance found')
   return -1;
@@ -101,7 +122,14 @@ else
  {
    res.status(400).send('Option selected incorrect')
  }
-ihf.getLogs(instance,CMD,res)
+try{
+  var logs = await ihf.getLogs(instance,CMD)
+  res.write(logs)
+  res.end()
+}catch(e){
+  logger.log('error',e)
+  res.status(400).send('Some error occurred: '+e.message)
+}
 })
 
 
