@@ -27,7 +27,7 @@ checkServiceStatus =  async (instance, serviceName)=> {
   if(index == -1)
    throw new Error('Service Not found in this domain')
   else{
-    var CMD=instance.ihome + '/server/bin/infacmd.sh ping -dn '+instance.domainName+'|grep \"was successfully pinged\"';
+    var CMD=instance.ihome + '/server/bin/infacmd.sh ping -dn '+instance.domainName+' -sn '+serviceName+'|grep \"was successfully pinged\"';
 
     try{
         var result = await runSSH(instance,CMD)
@@ -57,6 +57,7 @@ extractCatalogServices = async (instance,result)=>
    result=result.split(" ")
    result.forEach((item, i) => {
      item=item.trim()
+     if(item=="")return
      if( instance.CatalogServices.findIndex(x => x.name == item) == -1)
          instance.CatalogServices.push({name:item,status:"DOWN"})
    });
