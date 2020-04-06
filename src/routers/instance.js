@@ -4,11 +4,13 @@ const logger=require('../../logger')
 const ihf = require('../helperFunctions/instanceHF')
 node_ssh = require('node-ssh')
 ssh = new node_ssh()
+var cors = require('cors');
 
-const serviceRouter = require('./services') 
+const serviceRouter = require('./services')
 
 const router=app.Router();
 router.use('/services',serviceRouter)
+router.use(cors())
 
 router.get('/shutdown',async (req,res) =>{
   const _id=req.query.id
@@ -187,6 +189,20 @@ router.post('/',  async (req,res) => {
  res.status(200).send(instance)
  logger.log('info','Saved instance succesfully '+instance)
 
+})
+
+router.post('/runSSH', async (req , res) =>{
+  var CMD = req.body.cmd
+  const _id=req.body.id
+  try{
+  var instance = await instanceModel.findById({_id})
+    if(!instance)throw new Error('No instance with the ID found')
+  }catch(e){
+  logger.log('error',e)
+  return res.status(404).send('No such instance found,please check object id'+e)
+  }
+
+  res.send(await ihf.runSSH(instance,CMD))
 })
 
 

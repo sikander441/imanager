@@ -40,12 +40,13 @@ router.get('/updateAllServices',async (req,res)=> {
   logger.log('error',e)
   return res.status(404).send('No such instance found,please check object id'+e)
   }
-
+  var resultSet = []
   try{
     for(var i=0 ; i<instance.CatalogServices.length ;i++ )
       {
-        await ihf.checkServiceStatus(instance,instance.CatalogServices[i].name,true)
+        resultSet.push(ihf.checkServiceStatus(instance,instance.CatalogServices[i].name,true));
       }
+      await Promise.all(resultSet)
       res.send(instance)
 
     }catch(e){

@@ -2,6 +2,8 @@ node_ssh = require('node-ssh')
 logger=require('../../logger')
 instanceModel = require('../models/instance')
 var xml2js = require('xml2js');
+node_ssh = require('node-ssh')
+
 // --------Runs an SSH command, returns a Promise.
 
 const runSSH = async (instance,CMD)=>{
@@ -12,6 +14,7 @@ logger.log('info','Running command: '+CMD)
     password: instance.linuxPassword,
     port: instance.sshPort
 };
+var ssh = new node_ssh();
 try{
   await ssh.connect(config)
   var result = await ssh.execCommand(CMD)
