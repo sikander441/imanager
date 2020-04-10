@@ -71,7 +71,17 @@ var instanceSchema=new Schema({
  timestamps:true
 })
 
-
+instanceSchema.statics.findWithId = async function(_id){
+  instanceModel = this
+  try{
+  var instance = await instanceModel.findById({_id})
+  if(!instance)throw new Error('No instance with the ID found')
+  return instance
+  }catch(e){
+  logger.log('error',e)
+  throw e
+  }
+}
 
 var instance = mongoose.model('instances',instanceSchema)
 
