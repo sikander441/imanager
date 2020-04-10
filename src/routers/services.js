@@ -8,16 +8,49 @@ ssh = new node_ssh()
 const router=app.Router();
 
 
+
+router.get('/toggleService', async(req,res) =>{
+  res.send('Toggling')
+})
+
+router.get('/getLogs', async (req,res) => {
+  const _id=req.query.id
+  const CS = req.query.serviceName
+  const logFile = req.query.file
+  var len=req.query.len || 50;
+
+  len=len>800?800:len
+
+  try{
+    var instance = await instanceModel.findWithId(_id)
+  }catch(e){
+    logger.log('error',e)
+    return res.status(400).send('Something went wrong: '+e.message)
+  }
+
+   var CMD='tail -'+len+'  '+instance.logDirectory+'/services/CatalogService/'+CS+'/'+logFile;
+  
+   try{
+     var result = await ihf.runSSH(instance,CMD)
+     res.write(result.stdout)
+     res.write(result.stderr)
+     res.end()
+   }catch(e){
+     logger.log('error',e)
+     res.status(400).send('Some error occurred: '+e.message)
+   }
+
+})
 router.get('/checkCatalogStatus',async (req,res) =>{
   const _id=req.query.id
   const serviceName=req.query.serviceName
   try{
-  var instance = await instanceModel.findById({_id})
-  if(!instance)throw new Error('No instance with the ID found')
+    var instance = await instanceModel.findWithId(_id)
   }catch(e){
-  logger.log('error',e)
-  return res.status(404).send('No such instance found,please check object id'+e)
+    logger.log('error',e)
+    return res.status(400).send('Something went wrong: '+e.message)
   }
+
 
   try{
     await ihf.checkServiceStatus(instance,serviceName)
@@ -34,12 +67,12 @@ router.get('/checkCatalogStatus',async (req,res) =>{
 router.get('/updateAllServices',async (req,res)=> {
   const _id=req.query.id
   try{
-  var instance = await instanceModel.findById({_id})
-  if(!instance)throw new Error('No instance with the ID found')
+    var instance = await instanceModel.findWithId(_id)
   }catch(e){
-  logger.log('error',e)
-  return res.status(404).send('No such instance found,please check object id'+e)
+    logger.log('error',e)
+    return res.status(400).send('Something went wrong: '+e.message)
   }
+
   var resultSet = []
   try{
     for(var i=0 ; i<instance.CatalogServices.length ;i++ )
