@@ -71,57 +71,80 @@ checkServiceStatus =  async (instance, serviceName,force)=> {
 
 extractCatalogServices = async (instance,result)=>
 {
- if(result.includes("Command ran successfully."))
- {
-   result=result.replace('Command ran successfully.','').trim()
-   result=result.split(" ")
-   result.forEach((item, i) => {
-     item=item.trim()
-     if(item=="")return
-     if( instance.CatalogServices.findIndex(x => x.name == item) == -1)
-         instance.CatalogServices.push({name:item,status:"DOWN"})
-   });
-
- }
+     if(result.stderr)
+      logger.log('warn','Error while fetching Catalog Services: '+result.stderr)
+     else if(result.stdout.includes("Command ran successfully."))
+     {
+       result = result.stdout
+       result=result.replace('Command ran successfully.','').trim()
+       result=result.split(" ")
+       result.forEach((item, i) => {
+         item=item.trim()
+         if(item=="")return
+         if( instance.CatalogServices.findIndex(x => x.name == item) == -1)
+             instance.CatalogServices.push({name:item,status:"DOWN"})
+       });
+     }
  else {
-   logger.log('warn','Error to fetch the list of catalog services'+result.substr(0,300))
+   logger.log('warn','Error to fetch the list of catalog services'+result.stdout.substr(0,300))
  }
-
 }
-extractDomainInfo = async function(instance,xmlData){
 
-    var parser = new xml2js.Parser
-    result= await parser.parseStringPromise(xmlData)
-    if(!instance.isDocker)
-    {
-      instance.host=result.Portals.vector[0].address[0].host[0]
-      instance.port=result.Portals.vector[0].address[0].port[0]
+extractDomainInfo = async function(instance,xmlData){
+    if(xmlData.stderr)
+     logger.log('warn','Error while fetching DomainInfo: '+xmlData.stderr)
+    else{
+      xmlData = xmlData.stdout
+      var parser = new xml2js.Parser
+      result= await parser.parseStringPromise(xmlData)
+      if(!instance.isDocker)
+      {
+        instance.host=result.Portals.vector[0].address[0].host[0]
+        instance.port=result.Portals.vector[0].address[0].port[0]
+      }
+      instance.domainName=result.Portals.vector[0].domainName[0]
     }
-    instance.domainName=result.Portals.vector[0].domainName[0]
+
 
 }
 
 extractSystemLogDirectory = async function(instance,directory)
 {
-  if(directory.includes("Command ran successfully."))
-{
-  directory=directory.replace('Command ran successfully.','').trim()
-  instance.logDirectory=directory
-}
-else{
-  logger.log('warn','Error to fetch the log directory'+directory.substr(0,300))
-}
+  if(directory.stderr)
+   logger.log('warn','Error while fetching log directory: '+directory.stderr)
+  else if(directory.stdout.includes("Command ran successfully."))
+  {
+    directory = directory.stdout
+    directory=directory.replace('Command ran successfully.','').trim()
+    instance.logDirectory=directory
+  }
+  else{
+    logger.log('warn','Error to fetch the log directory'+directory.stdout.substr(0,300))
+  }
 
 }
+extractVersionInfo = async(instance, result) =>{
+  if( result.stderr )
+   logger.log('warn','Version command failed with error: '+result.stderr)
+  else {
+    result = result.stdout
+    instance.version=result.split(':')[1].trim()
+  }
+}
 extractNodeNames = async(instance , result ) => {
-  if(result.includes("Command ran successfully."))
-{
-  result=result.replace('Command ran successfully.','').trim()
-  instance.nodes=result.split(' ')
-}
-else{
-  logger.log('warn','Error to fetch the Node Names'+result.substr(0,300))
-}
+
+  if(result.stderr){
+     logger.log('warn','Failed to get node names: '+result.stderr)
+  }
+  else if(result.stdout.includes("Command ran successfully."))
+  {
+    result = result.stdout
+    result=result.replace('Command ran successfully.','').trim()
+    instance.nodes=result.split(' ')
+  }
+  else{
+    logger.log('warn','Error to fetch the Node Names'+result.stdout.substr(0,300))
+  }
 }
 
 updateDomainInfo = async function(instance){
@@ -133,28 +156,27 @@ catalogServiceSubCommand = '\`'+instance.ihome+'/server/bin/infacmd.sh listServi
 getNodeListSubCommand = '\`'+instance.ihome+'/server/bin/infacmd.sh listNodes -dn '+instance.domainName+' -un '+instance.instanceUser+' -pd '+instance.instancePassword+'\`';
 delimiter='\"XXFFHH\" '
 
-var CMD='echo  '+versionSubCommand+delimiter+domainsInfaSubCommand+delimiter+logDirectorySubCommand+delimiter+catalogServiceSubCommand+delimiter+getNodeListSubCommand
-
+var CMDS=['echo  '+versionSubCommand,'echo  '+domainsInfaSubCommand,'echo  '+logDirectorySubCommand,'echo '+catalogServiceSubCommand,'echo '+getNodeListSubCommand]
+var result=[]
   try{
-      var result = await runSSH(instance,CMD)
-      if(result.stderr)
-      {
-        throw new Error(result.stderr)
-      }
-      else if(result.stdout)
-      {
-        logger.log('info','Command ran successfully')
-        result=result.stdout.split('XXFFHH')
-        instance.version=result[0].split(':')[1].trim()
-        await Promise.all([
-                          extractDomainInfo(instance,result[1]),
-                          extractSystemLogDirectory(instance,result[2]),
-                          extractCatalogServices(instance,result[3]),
-                          extractNodeNames(instance,result[4])
+     for(i=0; i<CMDS.length;i++)
+     {
+       result.push(runSSH(instance,CMDS[i]))
+     }
+      res=await Promise.all(result)
+
+      logger.log('info','Command ran successfully')
+      await Promise.all([
+                          extractNodeNames(instance,res[4]) ,
+                          extractVersionInfo(instance,res[0]),
+                          extractDomainInfo(instance,res[1]),
+                          extractSystemLogDirectory(instance,res[2]),
+                          extractCatalogServices(instance,res[3]),
+
                         ])
         return instance;
         logger.log('info','Domain info updated')
-      }
+
 }catch(e){throw e}
 
 }
@@ -184,25 +206,7 @@ const updateStatus = async function(instance,res){
 }
 
 
-const getLogs = async (instance,CMD) =>{
 
-  try{
-      var result = await runSSH(instance,CMD)
-      if(result.stdout){
-        logger.log('info','Logs fetched successfully')
-        return result.stdout
-      }
-      else
-       {
-         logger.log('error',new Error(result.stderr));
-         throw new Error(result.stderr)
-       }
-  }catch(e)
-  {
-    throw e
-  }
-
-  }
 
 
 
@@ -226,7 +230,6 @@ bringUp =async function(instance,res){
 
 
 module.exports = {
-  getLogs,
   updateStatus,
   updateDomainInfo,
   bringUp,
