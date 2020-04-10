@@ -15,11 +15,10 @@ router.use(cors())
 router.get('/shutdown',async (req,res) =>{
   const _id=req.query.id
   try{
-  var instance = await instanceModel.findById({_id})
-  if(!instance)throw new Error('No instance with the ID found')
+    var instance = await instanceModel.findWithId(_id)
   }catch(e){
-  logger.log('error',e)
-  return res.status(404).send('No such instance found,please check object id'+e)
+    logger.log('error',e)
+    return res.status(400).send('Something went wrong: '+e.message)
   }
   var CMD=instance.ihome + '/tomcat/bin/infaservice.sh shutdown';
   try{
@@ -41,11 +40,10 @@ router.get('/startup/:id',async (req,res) =>{
 
   const _id=req.params.id
   try{
-  var instance = await instanceModel.findById({_id})
-    if(!instance)throw new Error('No instance with the ID found')
+    var instance = await instanceModel.findWithId(_id)
   }catch(e){
-  logger.log('error',e)
-  return res.status(404).send('No such instance found,please check object id'+e)
+    logger.log('error',e)
+    return res.status(400).send('Something went wrong: '+e.message)
   }
 
  try{
@@ -62,14 +60,11 @@ router.get('/startup/:id',async (req,res) =>{
 router.get('/refreshDomain/:id',async (req,res)=> {
   const _id=req.params.id
   try{
-  var instance = await instanceModel.findById({_id})
+    var instance = await instanceModel.findWithId(_id)
   }catch(e){
-  logger.log('error',e)
-  return res.status(404).send('No such instance found,please check object id')
+    logger.log('error',e)
+    return res.status(400).send('Something went wrong: '+e.message)
   }
-  if(!instance){
-   return res.status(400).send('Error no instance found')
- }
  try{
    var instance = await ihf.updateDomainInfo(instance);
    res.status(200).send(instance)
@@ -96,6 +91,7 @@ router.delete('/',async (req,res) => {
   }
 
 })
+
 router.get('/' , async (req,res) => {
   try{
     var instances = await instanceModel.find(req.query)
@@ -114,15 +110,11 @@ router.get('/' , async (req,res) => {
 router.get('/isUp/:id',async (req,res) => {
   const _id=req.params.id
   try{
-  var instance = await instanceModel.findById({_id})
+    var instance = await instanceModel.findWithId(_id)
   }catch(e){
-  logger.log('error',e)
-  return res.send('No such instance found,please check object id')
+    logger.log('error',e)
+    return res.status(400).send('Something went wrong: '+e.message)
   }
-  if(!instance){
-   res.send('Error no instance found')
-   return -1;
- }
 
   try{
     var instance = await ihf.updateStatus(instance);
@@ -144,15 +136,11 @@ router.get('/getLogs/:id/:logType/:len?', async (req,res) => {
   var len=req.params.len || 50;
   len=len>800?800:len
   try{
-  var instance = await instanceModel.findById({_id})
-}catch(e){
-  logger.log('error',e)
-  return res.send('No such instance found,please check object id')
-}
- if(!instance){
-  res.send('Error no instance found')
-  return -1;
-}
+    var instance = await instanceModel.findWithId(_id)
+  }catch(e){
+    logger.log('error',e)
+    return res.status(400).send('Something went wrong: '+e.message)
+  }
   logger.log('info','fetching Logs from instance:'+instance.host+'  Directory: '+instance.logDirectory)
 
 if(logType == 'catalina')
@@ -163,22 +151,31 @@ else
  {
    res.status(400).send('Option selected incorrect')
  }
-try{
-  var logs = await ihf.getLogs(instance,CMD)
-  res.write(logs)
-  res.end()
-}catch(e){
-  logger.log('error',e)
-  res.status(400).send('Some error occurred: '+e.message)
-}
+ try{
+   var result = await ihf.runSSH(instance,CMD)
+   res.write(result.stdout)
+   res.write(result.stderr)
+   res.end()
+ }catch(e){
+   logger.log('error',e)
+   res.status(400).send('Some error occurred: '+e.message)
+ }
 })
 
 
 
 router.post('/',  async (req,res) => {
-  var instance =  new instanceModel(req.body)
+
+   var instance =  new instanceModel(req.body)
   try{
-  var instance = await instance.save()
+    var instancePresent = await instanceModel.find({ihome:req.body.ihome,host:req.body.host})
+    if(instancePresent.length > 0)
+    {
+      logger.warn('Instance already exists')
+      throw new Error('Instance already exists with id: '+instancePresent[0]._id)
+    }else{
+      res.send(await instance.save())
+    }
   }
  catch(e)
  {
@@ -186,7 +183,6 @@ router.post('/',  async (req,res) => {
    return res.status(400).send(e.message)
  }
 
- res.status(200).send(instance)
  logger.log('info','Saved instance succesfully '+instance)
 
 })
@@ -195,14 +191,15 @@ router.post('/runSSH', async (req , res) =>{
   var CMD = req.body.cmd
   const _id=req.body.id
   try{
-  var instance = await instanceModel.findById({_id})
-    if(!instance)throw new Error('No instance with the ID found')
+    var instance = await instanceModel.findWithId(_id)
   }catch(e){
-  logger.log('error',e)
-  return res.status(404).send('No such instance found,please check object id'+e)
+    logger.log('error',e)
+    return res.status(400).send('Something went wrong: '+e.message)
   }
-
-  res.send(await ihf.runSSH(instance,CMD))
+  var result = await ihf.runSSH(instance,CMD)
+  res.write(result.stdout)
+  res.write(result.stderr)
+  res.end()
 })
 
 
