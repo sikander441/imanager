@@ -91,11 +91,24 @@ router.delete('/',async (req,res) => {
   }
 
 })
-
+router.patch('/',async (req,res) => {
+  try{
+    var _id = req.query._id
+    delete req.query._id
+    var instance = await instanceModel.findByIdAndUpdate({_id},req.query)
+    if(instance)
+      res.send('Updated succesfully')
+    else
+      throw new Error('No instance found with given id')
+  }catch(e){
+    logger.log('error',e)
+    res.status(400).send('Something went wrong: '+e.message)
+  }
+})
 router.get('/' , async (req,res) => {
   if(req.query.fieldsToReturn)
    var selectFields =req.query.fieldsToReturn
-  
+
   try{
     if(selectFields){
       delete req.query.fieldsToReturn
