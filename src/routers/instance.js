@@ -93,13 +93,20 @@ router.delete('/',async (req,res) => {
 })
 
 router.get('/' , async (req,res) => {
+  if(req.query.fieldsToReturn)
+   var selectFields =req.query.fieldsToReturn
+  
   try{
-    var instances = await instanceModel.find(req.query)
+    if(selectFields){
+      delete req.query.fieldsToReturn
+      selectFields=selectFields.split(' ')
+    }
+    var instances = await instanceModel.find(req.query,selectFields)
   }
   catch(e)
   {
     logger.log('info',e)
-    return res.status(400).send('Failed to get instances')
+    return res.status(400).send('Failed to get instances: '+e.message)
   }
 
   res.status(200).send(instances)
