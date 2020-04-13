@@ -121,8 +121,9 @@ router.get('/' , async (req,res) => {
     logger.log('info',e)
     return res.status(400).send('Failed to get instances: '+e.message)
   }
-
-  res.status(200).send(instances)
+  response = {'count':await instances.length}
+  response.data = instances
+  res.status(200).send(response)
 })
 
 
