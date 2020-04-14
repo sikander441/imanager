@@ -34,7 +34,7 @@ mongoose.connection.on('connected', () => {
       logger.log('info','Server Started at port '+port)
     }
   }).on('error',(e)=>{
-    logger.log('error','Error occurred while trying to create server '+ e);
+    logger.log('error',e);
     mongoose.connection.close()
   })
 });
