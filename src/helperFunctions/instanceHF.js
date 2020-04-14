@@ -47,7 +47,7 @@ checkServiceStatus =  async (instance, serviceName,force)=> {
     var CMD2=instance.ihome + '/server/bin/infacmd.sh ldm listServiceProcessOptions -dn '+instance.domainName+' -sn '+serviceName+' -un \"'+instance.instanceUser+'\" -pd \"'+instance.instancePassword+'\" -nn '+instance.nodes[0]
     try{
         var result = await runSSH(instance,CMD)
-        if(force || !instance.CatalogServices[index].url)
+        if(!instance.isDocker &&  (force || !instance.CatalogServices[index].url) )
         {
             var result2 = await runSSH(instance,CMD2)
             await getProcessOptions(instance,index,result2)
