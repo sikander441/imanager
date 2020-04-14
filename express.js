@@ -9,7 +9,7 @@ var path = require('path')
 const app=express();
 
 var accessLogStream = fs.createWriteStream(path.join(__dirname, '/logs/access.log'), { flags: 'a' })
-app.use(morgan('short', { stream: accessLogStream }))
+app.use(morgan('combined', { stream: accessLogStream }))
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
