@@ -18,6 +18,10 @@ var ssh = new node_ssh();
 try{
   await ssh.connect(config)
   var result = await ssh.execCommand(CMD)
+  if(result.stderr)
+   {
+     throw new Error(result.stderr)
+   }
   ssh.dispose()
   return result
 }catch(err){
@@ -91,8 +95,10 @@ extractCatalogServices = async (instance,result)=>
 }
 
 extractDomainInfo = async function(instance,xmlData){
-    if(xmlData.stderr)
+    if(xmlData.stderr){
      logger.log('warn','Error while fetching DomainInfo: '+xmlData.stderr)
+     throw new Error(xmlData.stderr)
+   }
     else{
       xmlData = xmlData.stdout
       var parser = new xml2js.Parser
@@ -110,8 +116,10 @@ extractDomainInfo = async function(instance,xmlData){
 
 extractSystemLogDirectory = async function(instance,directory)
 {
-  if(directory.stderr)
+  if(directory.stderr){
    logger.log('warn','Error while fetching log directory: '+directory.stderr)
+    throw new Error(directory.stderr)
+ }
   else if(directory.stdout.includes("Command ran successfully."))
   {
     directory = directory.stdout
@@ -120,12 +128,15 @@ extractSystemLogDirectory = async function(instance,directory)
   }
   else{
     logger.log('warn','Error to fetch the log directory'+directory.stdout.substr(0,300))
+     throw new Error(directory.stdout.substr(0,300))
   }
 
 }
 extractVersionInfo = async(instance, result) =>{
-  if( result.stderr )
+  if( result.stderr ){
    logger.log('warn','Version command failed with error: '+result.stderr)
+   throw new Error(result.stderr)
+ }
   else {
     result = result.stdout
     instance.version=result.split(':')[1].trim()
@@ -135,6 +146,7 @@ extractNodeNames = async(instance , result ) => {
 
   if(result.stderr){
      logger.log('warn','Failed to get node names: '+result.stderr)
+     throw new Error(result.stderr)
   }
   else if(result.stdout.includes("Command ran successfully."))
   {
@@ -144,6 +156,7 @@ extractNodeNames = async(instance , result ) => {
   }
   else{
     logger.log('warn','Error to fetch the Node Names'+result.stdout.substr(0,300))
+    throw new Error(result.stdout.substr(0,300))
   }
 }
 

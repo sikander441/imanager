@@ -4,14 +4,39 @@ const logger=require('../../logger')
 const ihf = require('../helperFunctions/instanceHF')
 node_ssh = require('node-ssh')
 ssh = new node_ssh()
-var cors = require('cors');
+
 
 const serviceRouter = require('./services')
 
-const router=app.Router();
-router.use('/services',serviceRouter)
-router.use(cors())
 
+const router=app.Router();
+
+
+
+
+router.use('/services',serviceRouter)
+router.get('/testConnection',async (req,res) =>{
+
+  const host=req.query.host
+  const sshPort=req.query.port || 22
+  const linuxUser = req.query.linuxUser;
+  const linuxPassword = req.query.linuxPassword
+  const instance={host,sshPort,linuxUser,linuxPassword}
+  try{
+    const result = await ihf.runSSH(instance,'ls ~')
+    if(result.stderr)
+     throw new Error(result.stderr)
+    res.status(200).send({
+      status:'success',
+      message:'Test Connection successful!'
+    })
+  }catch(e)
+  {
+    logger.log('error',e)
+    return res.status(202).send({status:'failed',message:'Something went wrong: '+e.message})
+  }
+
+})
 router.get('/shutdown',async (req,res) =>{
   const _id=req.query.id
   try{
@@ -187,7 +212,7 @@ else
 
 
 
-router.post('/',  async (req,res) => {
+router.post('/', async (req,res) => {
 
    var instance =  new instanceModel(req.body)
    if(instance.ihome.endsWith('/'))
@@ -197,25 +222,21 @@ router.post('/',  async (req,res) => {
   try{
     domainsInfaSubCommand = 'cat '+instance.ihome+'/domains.infa'
     const xmlData = await ihf.runSSH(instance,domainsInfaSubCommand)
-    console.log(domainsInfaSubCommand)
-    console.log(xmlData)
     await ihf.extractDomainInfo(instance,xmlData)
     var instancePresent = await instanceModel.find({ihome:instance.ihome,host:instance.host})
-    if(!instancePresent){
-
-    }
     if(instancePresent.length > 0)
     {
       logger.warn('Instance already exists')
       throw new Error('Instance already exists with id: '+instancePresent[0]._id)
     }else{
-      res.send(await instance.save())
+      instance = await ihf.updateDomainInfo(instance);
+      res.send({status:'success',instance:await instance.save()})
     }
   }
  catch(e)
  {
    logger.log('error',e)
-   return res.status(400).send(e.message)
+   return res.status(202).send({status:'fail',message:e.message})
  }
 
  logger.log('info','Saved instance succesfully '+instance)

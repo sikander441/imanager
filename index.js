@@ -3,7 +3,6 @@
 const app = require('./express')
 const logger=require('./logger')
 const mongoose = require('mongoose')
-var cors = require('cors');
 
 //--------Server config-----------
 const port=process.env.PORT || 3000
@@ -20,7 +19,7 @@ const mainRouter=require('./src/routers/main')
 
 app.use('/instances',instanceRouter);
 app.use('/',mainRouter);
-app.use(cors())
+
 
 // ----------------Connect to MongoDB then start the server-------
 logger.log('info','----------------------START OF APP----------------')
