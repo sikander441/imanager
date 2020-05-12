@@ -235,4 +235,5 @@ module.exports = {
   bringUp,
   runSSH,
   checkServiceStatus,
+  extractDomainInfo
 };

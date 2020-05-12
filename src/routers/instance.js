@@ -81,6 +81,8 @@ router.delete('/',async (req,res) => {
   const _id=req.query.id
   try{
     var instance = await instanceModel.findOneAndDelete({_id})
+    if(!instance)
+     throw new Error('Instance not found');
     logger.log('info',`Deleted instance: ${instance.host} with ihome: ${instance.ihome}`)
     res.status(200).send('Deleted Succesfully: '+instance)
   }
@@ -188,8 +190,20 @@ else
 router.post('/',  async (req,res) => {
 
    var instance =  new instanceModel(req.body)
+   if(instance.ihome.endsWith('/'))
+    instance.ihome = instance.ihome.substring(0, instance.ihome.length - 1);
+
+
   try{
-    var instancePresent = await instanceModel.find({ihome:req.body.ihome,host:req.body.host})
+    domainsInfaSubCommand = 'cat '+instance.ihome+'/domains.infa'
+    const xmlData = await ihf.runSSH(instance,domainsInfaSubCommand)
+    console.log(domainsInfaSubCommand)
+    console.log(xmlData)
+    await ihf.extractDomainInfo(instance,xmlData)
+    var instancePresent = await instanceModel.find({ihome:instance.ihome,host:instance.host})
+    if(!instancePresent){
+
+    }
     if(instancePresent.length > 0)
     {
       logger.warn('Instance already exists')
