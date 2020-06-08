@@ -222,7 +222,7 @@ router.post('/', async (req,res) => {
 
 
   try{
-    domainsInfaSubCommand = 'cat '+instance.ihome+'/domains.infa'
+    domainsInfaSubCommand = 'cat '+instance.ihome+'/isp/config/nodemeta.xml'
     const xmlData = await ihf.runSSH(instance,domainsInfaSubCommand)
     await ihf.extractDomainInfo(instance,xmlData)
     var instancePresent = await instanceModel.find({ihome:instance.ihome,host:instance.host})

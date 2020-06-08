@@ -103,12 +103,13 @@ extractDomainInfo = async function(instance,xmlData){
       xmlData = xmlData.stdout
       var parser = new xml2js.Parser
       result= await parser.parseStringPromise(xmlData)
+      
       if(!instance.isDocker)
       {
-        instance.host=result.Portals.vector[0].address[0].host[0]
-        instance.port=result.Portals.vector[0].address[0].port[0]
+        instance.host=result['imx:IMX']['domainservice:GatewayNodeConfig'][0].address[0]['$'].host
+        instance.port=result['imx:IMX']['domainservice:GatewayNodeConfig'][0].address[0]['$'].httpPort
       }
-      instance.domainName=result.Portals.vector[0].domainName[0]
+      instance.domainName=result['imx:IMX']['domainservice:GatewayNodeConfig'][0]['$'].domainName
     }
 
 
@@ -163,7 +164,7 @@ extractNodeNames = async(instance , result ) => {
 updateDomainInfo = async function(instance){
 
 versionSubCommand = '\`'+instance.ihome+'/server/bin/infacmd.sh version | grep -i version\`'
-domainsInfaSubCommand = '\`cat '+instance.ihome+'/domains.infa\`'
+domainsInfaSubCommand = '\`cat '+instance.ihome+'/isp/config/nodemeta.xml`'
 logDirectorySubCommand =  '\`'+instance.ihome+'/server/bin/infacmd.sh getSystemLogDirectory \`'
 catalogServiceSubCommand = '\`'+instance.ihome+'/server/bin/infacmd.sh listServices -dn '+instance.domainName+' -un '+instance.instanceUser+' -pd '+instance.instancePassword+' -st LDM \`'
 getNodeListSubCommand = '\`'+instance.ihome+'/server/bin/infacmd.sh listNodes -dn '+instance.domainName+' -un '+instance.instanceUser+' -pd '+instance.instancePassword+'\`';
