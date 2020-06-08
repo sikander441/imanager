@@ -136,6 +136,8 @@ router.get('/' , async (req,res) => {
   if(req.query.fieldsToReturn)
    var selectFields =req.query.fieldsToReturn
 
+   req.app.io.emit('updateReceived',{msg:'testing'})
+
   try{
     if(selectFields){
       delete req.query.fieldsToReturn
