@@ -3,8 +3,7 @@ const instanceModel = require('../models/instance')
 const logger=require('../../logger')
 const ihf = require('../helperFunctions/instanceHF')
 node_ssh = require('node-ssh')
-ssh = new node_ssh()
-
+const teamsModel = require('../models/teams')
 
 const serviceRouter = require('./services')
 
@@ -104,17 +103,22 @@ router.get('/refreshDomain/:id',async (req,res)=> {
 
 router.delete('/',async (req,res) => {
   const _id=req.query.id
+  const teamName = req.query.teamName
+  if( !_id || !teamName)
+   res.status(400).send('Sorry please give instance id and teamname');
   try{
-    var instance = await instanceModel.findOneAndDelete({_id})
+    var instance = await instanceModel.findOne({_id})
     if(!instance)
-     throw new Error('Instance not found');
+    throw new Error('Instance not found');
+    await teamsModel.deleteInstanceWithId(instance._id,teamName);
+    var instance = await instanceModel.findOneAndDelete({_id})
     logger.log('info',`Deleted instance: ${instance.host} with ihome: ${instance.ihome}`)
     res.status(200).send('Deleted Succesfully: '+instance)
   }
   catch(e)
   {
     logger.log('info',e)
-    return res.status(400).send('Failed to get instances: '+e)
+    return res.status(400).send('Failed  while deleting instance: '+e)
   }
 
 })
@@ -232,7 +236,17 @@ router.post('/', async (req,res) => {
       throw new Error('Instance already exists with id: '+instancePresent[0]._id)
     }else{
       instance = await ihf.updateDomainInfo(instance);
-      res.send({status:'success',instance:await instance.save()})
+      const teamName  = req.body.teamName;
+      if(!teamName)
+       throw new Error("TeamName not given");
+      const team = await teamsModel.findOne({teamName})
+      if(!team)
+       throw new Error("Team"+req.body.teamName+" Not found, please register team first")
+      team.instances.push(instance._id)
+      await team.save();
+      instance = await instance.save()
+
+      res.send({status:'success',instance})
     }
   }
  catch(e)
