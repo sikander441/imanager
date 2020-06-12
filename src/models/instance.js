@@ -1,8 +1,6 @@
 const mongoose = require('mongoose')
 const Schema= mongoose.Schema;
 const logger=require('../../logger.js')
-node_ssh = require('node-ssh')
-var parseString = require('xml2js').parseString;
 
 var instanceSchema=new Schema({
     CatalogServices:{
