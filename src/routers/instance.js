@@ -268,10 +268,19 @@ router.post('/runSSH', async (req , res) =>{
     logger.log('error',e)
     return res.status(400).send('Something went wrong: '+e.message)
   }
-  var result = await ihf.runSSH(instance,CMD)
-  res.write(result.stdout)
-  res.write(result.stderr)
-  res.end()
+  try{
+    var result = await ihf.runSSH(instance,CMD)
+    res.write(result.stdout)
+    res.write(result.stderr)
+    res.end()
+  }catch(err){
+    res.write(err.message)
+    res.end()
+  }
+    
+  
+ 
+  
 })
 
 
