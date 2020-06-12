@@ -56,7 +56,6 @@ mongoose.connection.on('connected', () => {
         logger.log('error',e)
         
       }
-      console.log('finished checking !')
     });
   });
   
