@@ -10,8 +10,6 @@ router.get('/getInstances/:teamName',async (req,res) =>{
   teamName = req.params.teamName
   try{
     let team = await teamModel.findOne({teamName})
-    console.log(team);
-    console.log(teamName)
     team = await team.populate('instances').execPopulate();
     res.status(200).send(team);
   }catch(e){
