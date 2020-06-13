@@ -3,6 +3,7 @@ const bodyParser = require("body-parser");
 var morgan = require('morgan')
 var fs = require('fs')
 var path = require('path')
+var cookieParser = require('cookie-parser'); 
 var cors = require('cors')
 
 
@@ -27,5 +28,7 @@ app.use((cli, res, next) => {
 
     next()
 })
+
+app.use(cookieParser())
 
 module.exports = app

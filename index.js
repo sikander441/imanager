@@ -20,11 +20,17 @@ const db = require('./src/db/dbconnect')
 //------------Import routers-----------
 const instanceRouter=require('./src/routers/instance')
 const mainRouter=require('./src/routers/main')
+const userRouter = require('./src/routers/user')
 
 // ---------------------- ROUTES----------------
 
+app.use('/user',userRouter);
 app.use('/instances',instanceRouter);
 app.use('/',mainRouter);
+
+
+
+
 
 app.io = io
 

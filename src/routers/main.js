@@ -22,16 +22,14 @@ router.get('/getInstances/:teamName',async (req,res) =>{
 router.post('/RegisterTeam',async (req,res) => {
   try{
     const teamName=req.body.teamName
-    const username=req.body.username
-    const password=req.body.password
 
-    await teamModel.create({teamName,username,password})
+    await teamModel.create({teamName})
 
-    res.status(200).send('Registered Succesfully')
+    res.status(200).send({status:'success',msg:'Registered Succesfully'})
 
   }catch(err){
     logger.log('error',err)
-    res.status(400).send('Something went wrong'+err.message)
+    res.status(400).send({status:'failed',msg:'Something went wrong'+err.message})
   }
 
 })

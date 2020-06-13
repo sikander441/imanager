@@ -63,6 +63,10 @@ var instanceSchema=new Schema({
     isDocker:{
       type:Boolean,
       default:false
+    },
+    owner:{
+      type:mongoose.ObjectId,
+      ref:"users"
     }
 },
 {
