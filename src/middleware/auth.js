@@ -1,18 +1,20 @@
 const jwt = require("jsonwebtoken");
-const { loggers } = require("winston");
+const logger = require('../../logger')
+
 
 
 module.exports = function(req, res, next) {
     
   const token = req.headers["x-access-token"] || req.headers["authorization"] || req.cookies["token"];
-  if (!token) return res.status(401).send("Access denied. No token provided.");
+
+  if (!token) return res.status(401).send({status:'failed',message:"Access denied. No token provided."});
 
   try {
     const decoded = jwt.verify(token, "siksingh");
     req.user = decoded;
     next();
   } catch (ex) {
-    loggers.loggers('Failed login attempt!')
-    res.status(400).send("Invalid token.");
+    logger.log('error','Failed login attempt!'+ex)
+    res.status(400).send({status:'failed',message:"Invalid token."});
   }
 };

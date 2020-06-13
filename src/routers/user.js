@@ -10,9 +10,15 @@ const { loggers } = require("winston");
 const router=app.Router();
 
 router.get("/current", auth, async (req, res) => {
+  try{
     let user = await userModel.findById(req.user._id).select("-password")
-    user = await user.populate('team','teamName').populate('instances').execPopulate()
+    user = await user.populate('team','teamName').execPopulate()
     res.send(user);
+  }catch(e){
+    logger.log('error',e)
+    res.status(400).send({status:'failed',message:e.message})
+  }
+   
   });
 
   router.post("/", async (req, res) => {
