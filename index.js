@@ -1,5 +1,6 @@
 const mongoConnectionString = 'mongodb://127.0.0.1/agenda';
 const Agenda = require('agenda')
+const ihf = require('./src/helperFunctions/instanceHF')
 
 const agenda = new Agenda({db: {address: mongoConnectionString}});
 
@@ -32,6 +33,22 @@ app.io = io
 // ----------------Connect to MongoDB then start the server-------
 
 
+const updateAllCatalogserviceStatus = async (instance) => {
+  var resultSet = []
+  try{
+    for(var i=0 ; i<instance.CatalogServices.length ;i++ )
+      {
+        resultSet.push(ihf.checkServiceStatus(instance,instance.CatalogServices[i].name,true));
+      }
+      await Promise.all(resultSet)
+
+    }catch(e){
+      logger.log('error',e)
+    }
+    finally{
+      await instance.save()
+    }
+}
 
 logger.log('info','----------------------START OF APP----------------')
 db.openConnection();
@@ -46,10 +63,11 @@ mongoose.connection.on('connected', () => {
     console.log('Total instances refreshing: '+instances.length)
     instances.forEach(async ins => {
       logger.log('info','currently refreshing instance with id:'+ins._id)
-      const ihf = require('./src/helperFunctions/instanceHF')
+     
       try{
         
         await ihf.updateStatus(ins);
+        await updateAllCatalogserviceStatus(ins);
         await ins.save()
       }catch(e)
       {
