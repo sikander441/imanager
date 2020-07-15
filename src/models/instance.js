@@ -22,7 +22,7 @@ var instanceSchema=new Schema({
     },
     port:  {
         type:Number,
-        default:0000
+        default:0
     },
     version:  {
         type:String,

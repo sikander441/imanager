@@ -6,6 +6,10 @@ var path = require('path')
 var cookieParser = require('cookie-parser'); 
 var cors = require('cors')
 
+//------------Import routers-----------
+const instanceRouter=require('./src/routers/instance')
+const mainRouter=require('./src/routers/main')
+const userRouter = require('./src/routers/user')
 
 const app=express();
 
@@ -30,5 +34,13 @@ app.use((cli, res, next) => {
 })
 
 app.use(cookieParser())
+
+
+app.use('/user',userRouter);
+app.use('/instances',instanceRouter);
+app.use('/',mainRouter);
+
+const db = require('./src/db/dbconnect')
+db.openConnection();
 
 module.exports = app

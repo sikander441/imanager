@@ -7,8 +7,10 @@ const teamsModel = require('../models/teams')
 const {userModel} = require('../models/users')
 const auth = require('../middleware/auth')
 
+const controller = require('../controllers/instance/instanceController')
 
 const serviceRouter = require('./services')
+const e = require('express')
 
 
 const router=app.Router();
@@ -18,26 +20,23 @@ const router=app.Router();
 
 router.use('/services',serviceRouter)
 router.get('/testConnection',async (req,res) =>{
-
-  const host=req.query.host
-  const sshPort=req.query.port || 22
-  const linuxUser = req.query.linuxUser;
-  const linuxPassword = req.query.linuxPassword
-  const instance={host,sshPort,linuxUser,linuxPassword}
   try{
-    const result = await ihf.runSSH(instance,'ls ~')
-    if(result.stderr)
-     throw new Error(result.stderr)
-    res.status(200).send({
-      status:'success',
-      message:'Test Connection successful!'
-    })
-  }catch(e)
-  {
-    logger.log('error',e)
-    return res.status(202).send({status:'failed',message:'Something went wrong: '+e.message})
+    const response = await controller.testConnection(req.query);
+    if(response.status == 'success')
+     res.status(200).send({status:'success'})
+    else{
+      throw response.error
+    }
+  }catch(e){
+    if(e.code == 'CMDERR' ){
+     res.status(200).send({status:'success'})
+  }else if(e.code == 'INPUTERR'){
+    res.status(400).send({status:'failed'})
+   }
+   else{
+     res.status(200).send({status:'failed'})
+   }
   }
-
 })
 router.get('/shutdown',async (req,res) =>{
   const _id=req.query.id
@@ -148,26 +147,13 @@ router.patch('/',async (req,res) => {
   }
 })
 router.get('/' , async (req,res) => {
-  if(req.query.fieldsToReturn)
-   var selectFields =req.query.fieldsToReturn
-
-   req.app.io.emit('updateReceived',{msg:'testing'})
-
   try{
-    if(selectFields){
-      delete req.query.fieldsToReturn
-      selectFields=selectFields.split(' ')
-    }
-    var instances = await instanceModel.find(req.query,selectFields)
+    const response = await controller.getAllInstances(req.query)
+    res.send(response)
+  }catch(ex){
+    logger.log('error',ex)
+    res.status(400).send({status:'failed',message:ex.message})
   }
-  catch(e)
-  {
-    logger.log('info',e)
-    return res.status(400).send('Failed to get instances: '+e.message)
-  }
-  response = {'count':await instances.length}
-  response.data = instances
-  res.status(200).send(response)
 })
 
 

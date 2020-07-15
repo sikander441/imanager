@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --coverage --verbose "
+  },
+  "jest": {
+    "testEnvironment": "node"
   },
   "keywords": [],
   "author": "",
@@ -24,8 +27,11 @@
     "morgan": "^1.10.0",
     "node-fetch": "^2.6.0",
     "node-ssh": "^8.0.0",
-    "socket.io": "^2.3.0",
     "winston": "^3.2.1",
     "xml2js": "^0.4.23"
+  },
+  "devDependencies": {
+    "jest": "^26.0.1",
+    "supertest": "^4.0.2"
   }
 }
