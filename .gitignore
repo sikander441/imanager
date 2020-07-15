@@ -2,3 +2,4 @@ node_modules/
 package-lock.json
 logs/
 test.js
+src/models/teams.js

@@ -3,7 +3,9 @@ const instanceModel = require('../models/instance')
 const logger=require('../../logger')
 const ihf = require('../helperFunctions/instanceHF')
 node_ssh = require('node-ssh')
-ssh = new node_ssh()
+const teamsModel = require('../models/teams')
+const {userModel} = require('../models/users')
+const auth = require('../middleware/auth')
 
 
 const serviceRouter = require('./services')
@@ -102,19 +104,32 @@ router.get('/refreshDomain/:id',async (req,res)=> {
 
 })
 
-router.delete('/',async (req,res) => {
+router.delete('/',auth,async (req,res) => {
   const _id=req.query.id
+  let user = await userModel.findById(req.user._id);
+  user = await user.populate('team').execPopulate();
+  const teamName = user.team.teamName
+ 
+  if( !_id )
+   res.status(400).send('Sorry please give instance id ');
   try{
-    var instance = await instanceModel.findOneAndDelete({_id})
+    var instance = await instanceModel.findOne({_id})
     if(!instance)
-     throw new Error('Instance not found');
+    throw new Error('Instance not found');
+    
+    await user.deleteInstanceWithId(instance._id)
+    await teamsModel.deleteInstanceWithId(instance._id,teamName);
+   
+    var instance = await instanceModel.findOneAndDelete({_id})
+    
     logger.log('info',`Deleted instance: ${instance.host} with ihome: ${instance.ihome}`)
     res.status(200).send('Deleted Succesfully: '+instance)
   }
   catch(e)
   {
     logger.log('info',e)
-    return res.status(400).send('Failed to get instances: '+e)
+    console.log(e)
+    return res.status(400).send('Failed  while deleting instance: '+e)
   }
 
 })
@@ -214,7 +229,7 @@ else
 
 
 
-router.post('/', async (req,res) => {
+router.post('/',auth, async (req,res) => {
 
    var instance =  new instanceModel(req.body)
    if(instance.ihome.endsWith('/'))
@@ -232,7 +247,19 @@ router.post('/', async (req,res) => {
       throw new Error('Instance already exists with id: '+instancePresent[0]._id)
     }else{
       instance = await ihf.updateDomainInfo(instance);
-      res.send({status:'success',instance:await instance.save()})
+
+      let user = await userModel.findById(req.user._id);
+      user = await user.populate('team').execPopulate();
+      user.instances.push(instance._id)
+
+      let team = await teamsModel.findById(user.team._id)
+      team.instances.push(instance._id)
+      
+      await user.save();
+      await team.save();
+      instance = await instance.save()
+
+      res.send({status:'success',instance})
     }
   }
  catch(e)
